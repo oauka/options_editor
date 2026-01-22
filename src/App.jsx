@@ -1231,7 +1231,7 @@ ${opt.specs.map(spec => `          <div class="spec-item" style="color: ${opt.sp
       <div className="w-48 flex-shrink-0 bg-gray-100 p-4">
         <div className="sticky" style={{ top: '50%', transform: 'translateY(-50%)' }}>
           <div className="bg-white border-2 border-dashed border-gray-300 rounded-lg p-3 text-center shadow-sm">
-            <p className="text-xs text-gray-500 mb-2 font-semibold">Google AdSense</p>
+            <p className="text-xs text-gray-500 mb-2 font-semibold">Adsterra</p>
             <div className="bg-gray-50 rounded p-2 min-h-[600px]">
               <AdFrame />
             </div>
