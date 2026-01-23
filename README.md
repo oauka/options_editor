@@ -57,7 +57,8 @@
 - Node.js 16.x 이상
 - npm 또는 yarn
 
-### 설치
+### 로컬 개발
+
 ```bash
 # 저장소 클론
 git clone https://github.com/yourusername/product-options-editor.git
@@ -67,19 +68,37 @@ cd product-options-editor
 
 # 의존성 설치
 npm install
-```
 
-### 실행
-```bash
 # 개발 서버 실행
-npm start
+npm run dev
 
 # 브라우저에서 http://localhost:3000 접속
 ```
 
-### 빌드
+### Vercel에 배포하기
+
+#### 방법 1: Vercel CLI 사용
 ```bash
-# 프로덕션 빌드
+# Vercel CLI 설치 (처음 한번만)
+npm install -g vercel
+
+# 배포
+vercel
+
+# 프로덕션 배포
+vercel --prod
+```
+
+#### 방법 2: GitHub 연동
+1. GitHub에 코드 푸시
+2. [Vercel](https://vercel.com) 접속 및 로그인
+3. "New Project" 클릭
+4. GitHub 저장소 선택
+5. "Deploy" 클릭 - 자동으로 빌드 및 배포됩니다!
+
+### 프로덕션 빌드
+```bash
+# 로컬에서 빌드
 npm run build
 ```
 
