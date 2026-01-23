@@ -87,6 +87,28 @@ const ProductOptionsEditor = () => {
   const [previewMode, setPreviewMode] = useState(false);
   const [dragging, setDragging] = useState(null);
 
+  // 광고 스크립트 로드
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://pl28539791.effectivegatecpm.com/e0a030d49075e7508ace9906e2111ed2/invoke.js';
+    script.async = true;
+    script.setAttribute('data-cfasync', 'false');
+    
+    const adContainer = document.getElementById('adsterra-container');
+    if (adContainer && !document.getElementById('adsterra-script')) {
+      script.id = 'adsterra-script';
+      adContainer.appendChild(script);
+    }
+
+    return () => {
+      // cleanup
+      const existingScript = document.getElementById('adsterra-script');
+      if (existingScript) {
+        existingScript.remove();
+      }
+    };
+  }, []);
+
   // 텍스트 테두리 생성 함수
   const generateTextOutline = (color, width) => {
     if (!width || width < 1) return 'none';
@@ -1216,13 +1238,8 @@ ${opt.specs.map(spec => `          <div class="spec-item" style="color: ${opt.sp
         <div className="sticky" style={{ top: '50%', transform: 'translateY(-50%)' }}>
           <div className="bg-white border-2 border-dashed border-gray-300 rounded-lg p-3 text-center shadow-sm">
             <p className="text-xs text-gray-500 mb-2 font-semibold">Adsterra</p>
-            <div className="bg-gray-50 rounded p-2 min-h-[600px] flex items-center justify-center">
-              {/* 여기에 구글 애드센스 코드를 넣으세요 */}
-              <div className="text-gray-400 text-sm">
-                <p className="font-medium">광고 영역</p>
-                <p className="text-xs mt-2">160 × 600</p>
-                <p className="text-xs text-gray-300 mt-4">스크롤을 따라<br/>내려갑니다</p>
-              </div>
+            <div className="bg-gray-50 rounded p-2 min-h-[600px]" id="adsterra-container">
+              <div id="container-e0a030d49075e7508ace9906e2111ed2"></div>
             </div>
           </div>
         </div>
