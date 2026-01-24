@@ -707,22 +707,25 @@ const ProductOptionsEditor = () => {
         width: 1000, // 고정 너비
         windowWidth: 1000,
         onclone: (clonedDoc) => {
-          // 복제된 문서에서 모든 transform 제거
+          // 모든 zoom 제거
           const allElements = clonedDoc.querySelectorAll('*');
           allElements.forEach(el => {
             const style = el.style;
-            // zoom 제거
             if (style.zoom) style.zoom = '';
-            // transform의 scale만 제거하고 translate는 유지
-            if (style.transform && !style.transform.includes('translate')) {
-              style.transform = '';
-            }
           });
 
-          // 모든 이미지를 display: block으로
+          // 모든 이미지 display: block, object-fit: contain, object-position: center 강제
           const images = clonedDoc.querySelectorAll('img');
           images.forEach(img => {
             img.style.display = 'block';
+            img.style.objectFit = 'contain';
+            img.style.objectPosition = 'center';
+          });
+
+          // imgFrame 클래스 확인
+          const imgFrames = clonedDoc.querySelectorAll('.imgFrame');
+          imgFrames.forEach(frame => {
+            console.log('imgFrame:', frame.style.width, frame.style.height);
           });
         }
       });
@@ -885,16 +888,18 @@ const ProductOptionsEditor = () => {
           width: 1000,
           windowWidth: 1000,
           onclone: (clonedDoc) => {
-            // zoom 및 불필요한 transform 제거
+            // zoom 제거
             const allElements = clonedDoc.querySelectorAll('*');
             allElements.forEach(el => {
               if (el.style.zoom) el.style.zoom = '';
             });
             
-            // 모든 이미지 display: block
+            // 모든 이미지 display: block, object-fit: contain, object-position: center 강제
             const images = clonedDoc.querySelectorAll('img');
             images.forEach(img => {
               img.style.display = 'block';
+              img.style.objectFit = 'contain';
+              img.style.objectPosition = 'center';
             });
           }
         });
@@ -1095,29 +1100,33 @@ const ProductOptionsEditor = () => {
                       position: 'relative',
                       flex: 1,
                       overflow: 'hidden',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
                       minHeight: 0
                     }}>
                       {opt.image && (
-                        <img 
-                          src={opt.image} 
-                          alt={opt.title}
-                          style={{ 
-                            display: 'block',
-                            width: '100%',
-                            height: '100%',
-                            maxWidth: '100%', 
-                            maxHeight: '100%', 
-                            objectFit: 'contain',
+                        <div 
+                          className="imgFrame"
+                          style={{
                             position: 'absolute',
                             left: `${opt.imagePosition.x}%`,
                             top: `${opt.imagePosition.y}%`,
-                            transform: `translate(-50%, -50%) scale(${(opt.imagePosition.scale || 100) / 100})`,
+                            width: `${466 * (opt.imagePosition.scale || 100) / 100}px`,
+                            height: `${(opt.height - 52 - (opt.specsEnabled && opt.specs.length > 0 ? opt.specs.length * 30 : 0)) * (opt.imagePosition.scale || 100) / 100}px`,
+                            transform: 'translate(-50%, -50%)',
                             zIndex: opt.circleOverlay.enabled && opt.circleOverlay.zIndex === 'front' ? 1 : 2
                           }}
-                        />
+                        >
+                          <img 
+                            src={opt.image} 
+                            alt={opt.title}
+                            style={{ 
+                              display: 'block',
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'contain',
+                              objectPosition: 'center'
+                            }}
+                          />
+                        </div>
                       )}
                       {opt.circleOverlay.enabled && (
                         <div 
@@ -1136,20 +1145,28 @@ const ProductOptionsEditor = () => {
                           }}
                         >
                           {opt.circleOverlay.image && (
-                            <img 
-                              src={opt.circleOverlay.image}
-                              alt="detail"
+                            <div
                               style={{
-                                display: 'block',
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'contain',
                                 position: 'absolute',
                                 left: `${opt.circleOverlay.innerImage?.position?.x || 50}%`,
                                 top: `${opt.circleOverlay.innerImage?.position?.y || 50}%`,
-                                transform: `translate(-50%, -50%) scale(${(opt.circleOverlay.innerImage?.scale || 100) / 100})`
+                                width: `${opt.circleOverlay.size.width * (opt.circleOverlay.innerImage?.scale || 100) / 100}px`,
+                                height: `${opt.circleOverlay.size.height * (opt.circleOverlay.innerImage?.scale || 100) / 100}px`,
+                                transform: 'translate(-50%, -50%)'
                               }}
-                            />
+                            >
+                              <img 
+                                src={opt.circleOverlay.image}
+                                alt="detail"
+                                style={{
+                                  display: 'block',
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'contain',
+                                  objectPosition: 'center'
+                                }}
+                              />
+                            </div>
                           )}
                         </div>
                       )}
