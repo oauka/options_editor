@@ -727,6 +727,13 @@ const ProductOptionsEditor = () => {
   };
 
   const exportHTML = () => {
+    // 미리보기 모드로 전환
+    if (!document.getElementById('preview-area')) {
+      setPreviewMode(true);
+      setTimeout(() => exportHTML(), 500);
+      return;
+    }
+
     const titleFonts = `<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />`;
     
     const gmarketFont = `
@@ -764,6 +771,12 @@ const ProductOptionsEditor = () => {
       src: url('${impactFont}');
       font-style: normal;
     }` : ''}`;
+
+    // 미리보기 DOM에서 실제 HTML 가져오기
+    const previewArea = document.getElementById('preview-area');
+    const clonedContent = previewArea.cloneNode(true);
+    clonedContent.removeAttribute('id');
+    const previewHTML = clonedContent.outerHTML;
     
     const html = `<!DOCTYPE html>
 <html lang="ko">
@@ -774,157 +787,18 @@ const ProductOptionsEditor = () => {
   ${titleFonts}
   <style>${gmarketFont}
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Gmarket Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: ${backgroundColor}; }
-    .container { width: 1000px; margin: 0 auto; padding: 20px 0; background: ${backgroundColor}; }
-    .title-section { 
-      background: ${titleBgColor}; 
-      color: ${titleTextColor}; 
-      padding: 0 20px; 
-      font-size: 32px; 
-      font-weight: bold; 
-      text-align: left;
-      position: relative;
-      padding-left: 45px;
-      height: 60px;
-      display: flex;
-      align-items: center;
-      padding-bottom: 0;
-    }
-    .title-section::before {
-      content: '';
-      position: absolute;
-      left: 0;
-      top: 0;
-      bottom: 0;
-      width: 20px;
-      background: ${titleAccentColor};
-    }
-    .title-english {
-      font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-      font-weight: 700;
-      font-style: normal;
-      font-size: 32px;
-      line-height: 1;
-    }
-    .title-korean {
-      font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-      font-weight: 700;
-      font-size: 26px;
-      line-height: 1;
-    }
-    .options-grid { 
-      display: grid;
-      grid-template-columns: repeat(2, 470px);
-      gap: 20px;
-      justify-content: center;
-      padding: ${titleEnabled ? '20px 20px 0 20px' : '0 20px'};
-      background: ${backgroundColor};
-    }
-    .option-item { 
-      width: 470px; 
-      background: white; 
-      border: 2px solid #ddd;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-    .option-header { 
-      background: #e0e0e0; 
-      padding: 8px 15px 8px 2px; 
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      min-height: 52px;
-      height: 52px;
-    }
-    .option-number {
-      width: 48px;
-      height: 48px;
-      background: white;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-      font-weight: 700;
-      font-style: normal;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.20);
-      flex-shrink: 0;
-      letter-spacing: -0.5px;
-    }
-    .option-title {
-      font-family: 'Gmarket Sans', sans-serif;
-      font-weight: 500;
-      transform: scaleX(0.95);
-      flex: 1;
-      padding-right: 10px;
-      display: flex;
-      align-items: center;
-      margin-top: 2px;
-    }
-    .option-specs { 
-      padding: 0;
-      font-size: 16px;
-      line-height: 1;
-      border-top: 1px solid #ddd;
-    }
-    .spec-item {
-      color: #535353;
-      border-bottom: 1px solid #ddd;
-    }
-    .spec-content {
-      padding: 8px 20px 4px 20px;
-      font-family: 'Gmarket Sans', sans-serif;
-      font-weight: 500;
-      transform: scaleX(0.95);
-      transform-origin: left;
-    }
-    .option-image-container { 
-      position: relative;
-      flex: 1;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 0;
-    }
+    body { font-family: 'Gmarket Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: ${backgroundColor}; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 20px 0; }
   </style>
 </head>
 <body>
-  <div class="container">
-    ${titleEnabled ? `<div class="title-section">
-      <span class="title-english">${title.split('_')[0]}${title.split('_')[1] ? '_' : ''}</span>${title.split('_')[1] ? `<span class="title-korean">${title.split('_')[1]}</span>` : ''}
-    </div>` : ''}
-    <div class="options-grid">
-${options.map(opt => `      <div class="option-item" style="height: ${opt.height}px; display: flex; flex-direction: column;">
-        <div class="option-header">
-          ${opt.numberEnabled ? `<div style="position: relative; width: 48px; height: 48px; flex-shrink: 0; margin-top: -1px;">
-            <div style="position: absolute; left: 1px; top: 2px; width: 48px; height: 48px; border-radius: 50%; background: rgba(0,0,0,0.20);"></div>
-            <div class="option-number" style="position: relative; font-size: ${opt.numberSize}px; color: ${opt.numberColor || '#000000'}; font-weight: ${opt.numberBold ? 900 : 700}; font-style: ${opt.numberItalic ? 'italic' : 'normal'}; ${opt.numberOutline ? `text-shadow: ${generateTextOutline(opt.numberOutlineColor, opt.numberOutlineWidth || 1)};` : ''}">${opt.number}</div>
-          </div>` : ''}
-          <div class="option-title" style="font-size: ${opt.fontSize}px; color: ${opt.titleColor || '#000000'}; font-weight: ${opt.titleBold ? 900 : 500}; font-style: ${opt.titleItalic ? 'italic' : 'normal'}; transform-origin: ${opt.titleAlign === 'left' ? 'left' : opt.titleAlign === 'right' ? 'right' : 'center'}; ${opt.titleOutline ? `text-shadow: ${generateTextOutline(opt.titleOutlineColor, opt.titleOutlineWidth || 1)};` : ''}">
-            <div style="width: 100%; text-align: ${opt.titleAlign};">${opt.title}</div>
-          </div>
-        </div>
-        ${opt.specsEnabled && opt.specs.length > 0 ? `<div class="option-specs" style="font-size: ${opt.specsFontSize}px;">
-${opt.specs.map(spec => `          <div class="spec-item" style="color: ${opt.specsColor};"><div class="spec-content" style="text-align: ${opt.specsAlign}; transform-origin: ${opt.specsAlign === 'left' ? 'left' : opt.specsAlign === 'right' ? 'right' : 'center'};">${spec.text}</div></div>`).join('\n')}
-        </div>` : ''}
-        ${opt.image || opt.circleOverlay.enabled || opt.textBox.enabled ? `<div class="option-image-container">
-          ${opt.image ? `<img src="${opt.image}" alt="${opt.title}" style="width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; position: absolute; left: ${opt.imagePosition.x}%; top: ${opt.imagePosition.y}%; transform: translate(-50%, -50%) scale(${(opt.imagePosition.scale || 100) / 100}); z-index: ${opt.circleOverlay.enabled && opt.circleOverlay.zIndex === 'front' ? 1 : 2};">` : ''}
-          ${opt.circleOverlay.enabled ? `<div style="position: absolute; left: ${opt.circleOverlay.position.x}%; top: ${opt.circleOverlay.position.y}%; width: ${opt.circleOverlay.size.width}px; height: ${opt.circleOverlay.size.height}px; border-radius: 50%; overflow: hidden; border: 3px solid #ddd; background-color: ${opt.circleOverlay.backgroundColor || '#FFFFFF'}; z-index: ${opt.circleOverlay.zIndex === 'front' ? 2 : 1}; transform: translate(-50%, -50%);">${opt.circleOverlay.image ? `<img src="${opt.circleOverlay.image}" alt="detail" style="width: 100%; height: 100%; object-fit: contain; position: absolute; left: ${opt.circleOverlay.innerImage?.position?.x || 50}%; top: ${opt.circleOverlay.innerImage?.position?.y || 50}%; transform: translate(-50%, -50%) scale(${(opt.circleOverlay.innerImage?.scale || 100) / 100});">` : ''}</div>` : ''}
-          ${opt.textBox.enabled && opt.textBox.text ? `<div style="position: absolute; left: ${opt.textBox.position?.x || 50}%; top: ${opt.textBox.position?.y || 20}%; transform: translate(-50%, -50%); font-size: ${opt.textBox.fontSize}px; color: ${opt.textBox.color}; font-family: 'Gmarket Sans', sans-serif; font-weight: ${opt.textBox.bold ? 900 : 500}; font-style: ${opt.textBox.italic ? 'italic' : 'normal'}; white-space: nowrap; z-index: 3; ${opt.textBox.outline ? `text-shadow: ${generateTextOutline(opt.textBox.outlineColor, opt.textBox.outlineWidth || 1)};` : ''}">${opt.textBox.text}</div>` : ''}
-        </div>` : ''}
-      </div>`).join('\n')}
-    </div>
-  </div>
-  <div style="text-align: center; padding: 20px;">
-    <button id="downloadBtn" style="padding: 12px 24px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: 500;">
+  ${previewHTML}
+  <div style="text-align: center; padding: 20px; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);">
+    <button id="downloadBtn" style="padding: 12px 24px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: 500; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
       📥 이미지로 다운로드
     </button>
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script>
-    // 모든 이미지가 로드될 때까지 대기
     window.onload = function() {
       const images = document.querySelectorAll('img');
       let loadedCount = 0;
@@ -943,7 +817,7 @@ ${opt.specs.map(spec => `          <div class="spec-item" style="color: ${opt.sp
     };
     
     document.getElementById('downloadBtn').addEventListener('click', async function() {
-      const container = document.querySelector('.container');
+      const container = document.querySelector('[style*="width: 1000px"]') || document.querySelector('div');
       if (!container) {
         alert('컨테이너를 찾을 수 없습니다.');
         return;
@@ -952,7 +826,6 @@ ${opt.specs.map(spec => `          <div class="spec-item" style="color: ${opt.sp
       this.textContent = '⏳ 이미지 생성 중...';
       this.disabled = true;
       
-      // 렌더링 완료 대기
       await new Promise(resolve => setTimeout(resolve, 500));
       
       try {
