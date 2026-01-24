@@ -1129,46 +1129,66 @@ const ProductOptionsEditor = () => {
                         </div>
                       )}
                       {opt.circleOverlay.enabled && (
-                        <div 
+                        <svg
                           style={{
                             position: 'absolute',
                             left: `${opt.circleOverlay.position.x}%`,
                             top: `${opt.circleOverlay.position.y}%`,
                             width: `${opt.circleOverlay.size.width}px`,
                             height: `${opt.circleOverlay.size.height}px`,
-                            borderRadius: '50%',
-                            overflow: 'hidden',
-                            border: '3px solid #ddd',
-                            backgroundColor: opt.circleOverlay.backgroundColor || '#FFFFFF',
+                            transform: 'translate(-50%, -50%)',
                             zIndex: opt.circleOverlay.zIndex === 'front' ? 2 : 1,
-                            transform: 'translate(-50%, -50%)'
+                            overflow: 'visible'
                           }}
                         >
-                          {opt.circleOverlay.image && (
-                            <div
-                              style={{
-                                position: 'absolute',
-                                left: `${opt.circleOverlay.innerImage?.position?.x || 50}%`,
-                                top: `${opt.circleOverlay.innerImage?.position?.y || 50}%`,
-                                width: `${opt.circleOverlay.size.width * (opt.circleOverlay.innerImage?.scale || 100) / 100}px`,
-                                height: `${opt.circleOverlay.size.height * (opt.circleOverlay.innerImage?.scale || 100) / 100}px`,
-                                transform: 'translate(-50%, -50%)'
-                              }}
-                            >
-                              <img 
-                                src={opt.circleOverlay.image}
-                                alt="detail"
-                                style={{
-                                  display: 'block',
-                                  width: '100%',
-                                  height: '100%',
-                                  objectFit: 'contain',
-                                  objectPosition: 'center'
-                                }}
+                          <defs>
+                            <clipPath id={`clip-${opt.id}`}>
+                              <circle 
+                                cx={opt.circleOverlay.size.width / 2} 
+                                cy={opt.circleOverlay.size.height / 2} 
+                                r={opt.circleOverlay.size.width / 2} 
                               />
-                            </div>
+                            </clipPath>
+                          </defs>
+                          
+                          {/* 배경색 원 */}
+                          <circle
+                            cx={opt.circleOverlay.size.width / 2}
+                            cy={opt.circleOverlay.size.height / 2}
+                            r={opt.circleOverlay.size.width / 2}
+                            fill={opt.circleOverlay.backgroundColor || '#FFFFFF'}
+                          />
+                          
+                          {/* 이미지 */}
+                          {opt.circleOverlay.image && (
+                            <g transform={`translate(${opt.circleOverlay.size.width / 2}, ${opt.circleOverlay.size.height / 2})`}>
+                              <g transform={`translate(
+                                ${opt.circleOverlay.size.width * ((opt.circleOverlay.innerImage?.position?.x || 50) - 50) / 100},
+                                ${opt.circleOverlay.size.height * ((opt.circleOverlay.innerImage?.position?.y || 50) - 50) / 100}
+                              ) scale(${(opt.circleOverlay.innerImage?.scale || 100) / 100})`}>
+                                <image
+                                  href={opt.circleOverlay.image}
+                                  x={-opt.circleOverlay.size.width / 2}
+                                  y={-opt.circleOverlay.size.height / 2}
+                                  width={opt.circleOverlay.size.width}
+                                  height={opt.circleOverlay.size.height}
+                                  preserveAspectRatio="xMidYMid meet"
+                                  clipPath={`url(#clip-${opt.id})`}
+                                />
+                              </g>
+                            </g>
                           )}
-                        </div>
+                          
+                          {/* 테두리 원 */}
+                          <circle
+                            cx={opt.circleOverlay.size.width / 2}
+                            cy={opt.circleOverlay.size.height / 2}
+                            r={opt.circleOverlay.size.width / 2 - 1.5}
+                            fill="none"
+                            stroke="#ddd"
+                            strokeWidth="3"
+                          />
+                        </svg>
                       )}
                       {opt.textBox.enabled && opt.textBox.text && (
                         <div 
@@ -2271,44 +2291,72 @@ const ProductOptionsEditor = () => {
                             />
                           )}
                           {option.circleOverlay.enabled && (
-                            <div 
+                            <svg
                               style={{
                                 position: 'absolute',
                                 left: `${option.circleOverlay.position.x}%`,
                                 top: `${option.circleOverlay.position.y}%`,
                                 width: `${option.circleOverlay.size.width}px`,
                                 height: `${option.circleOverlay.size.height}px`,
-                                borderRadius: '50%',
-                                overflow: 'hidden',
-                                border: '3px solid #ddd',
-                                backgroundColor: option.circleOverlay.backgroundColor || '#FFFFFF',
-                                zIndex: option.circleOverlay.zIndex === 'front' ? 2 : 1,
                                 transform: 'translate(-50%, -50%)',
-                                cursor: 'move'
+                                zIndex: option.circleOverlay.zIndex === 'front' ? 2 : 1,
+                                cursor: 'move',
+                                overflow: 'visible'
                               }}
                               onMouseDown={(e) => {
                                 e.stopPropagation();
                                 startDrag(option.id, 'circle', e);
                               }}
                             >
+                              <defs>
+                                <clipPath id={`clip-editor-${option.id}`}>
+                                  <circle 
+                                    cx={option.circleOverlay.size.width / 2} 
+                                    cy={option.circleOverlay.size.height / 2} 
+                                    r={option.circleOverlay.size.width / 2} 
+                                  />
+                                </clipPath>
+                              </defs>
+                              
+                              {/* 배경색 원 */}
+                              <circle
+                                cx={option.circleOverlay.size.width / 2}
+                                cy={option.circleOverlay.size.height / 2}
+                                r={option.circleOverlay.size.width / 2}
+                                fill={option.circleOverlay.backgroundColor || '#FFFFFF'}
+                              />
+                              
+                              {/* 이미지 */}
                               {option.circleOverlay.image && (
-                                <img 
-                                  src={option.circleOverlay.image}
-                                  alt="원형 미리보기"
-                                  style={{
-                                    width: '100%',
-                                    height: '100%',
-                                    objectFit: 'contain',
-                                    position: 'absolute',
-                                    left: `${option.circleOverlay.innerImage?.position?.x || 50}%`,
-                                    top: `${option.circleOverlay.innerImage?.position?.y || 50}%`,
-                                    transform: `translate(-50%, -50%) scale(${(option.circleOverlay.innerImage?.scale || 100) / 100})`,
-                                    pointerEvents: 'none'
-                                  }}
-                                  draggable="false"
-                                />
+                                <g transform={`translate(${option.circleOverlay.size.width / 2}, ${option.circleOverlay.size.height / 2})`}>
+                                  <g transform={`translate(
+                                    ${option.circleOverlay.size.width * ((option.circleOverlay.innerImage?.position?.x || 50) - 50) / 100},
+                                    ${option.circleOverlay.size.height * ((option.circleOverlay.innerImage?.position?.y || 50) - 50) / 100}
+                                  ) scale(${(option.circleOverlay.innerImage?.scale || 100) / 100})`}>
+                                    <image
+                                      href={option.circleOverlay.image}
+                                      x={-option.circleOverlay.size.width / 2}
+                                      y={-option.circleOverlay.size.height / 2}
+                                      width={option.circleOverlay.size.width}
+                                      height={option.circleOverlay.size.height}
+                                      preserveAspectRatio="xMidYMid meet"
+                                      clipPath={`url(#clip-editor-${option.id})`}
+                                      style={{ pointerEvents: 'none' }}
+                                    />
+                                  </g>
+                                </g>
                               )}
-                            </div>
+                              
+                              {/* 테두리 원 */}
+                              <circle
+                                cx={option.circleOverlay.size.width / 2}
+                                cy={option.circleOverlay.size.height / 2}
+                                r={option.circleOverlay.size.width / 2 - 1.5}
+                                fill="none"
+                                stroke="#ddd"
+                                strokeWidth="3"
+                              />
+                            </svg>
                           )}
                           {option.textBox.enabled && (
                             <div 
