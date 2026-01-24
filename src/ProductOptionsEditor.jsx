@@ -1,118 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Download, Image, ChevronUp, ChevronDown, X, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
 import html2canvas from 'html2canvas';
-
-// Canvas 기반 원형 오버레이 컴포넌트
-function CanvasCircleOverlay({
-  src,
-  size = 160,                 // 원 지름(px)
-  posX = 50,                  // 0~100 (50이 중앙)
-  posY = 50,                  // 0~100
-  userScale = 100,            // 100이 기본
-  bg = "#fff",
-  borderColor = "#ddd",
-  borderWidth = 3,
-  style = {}
-}) {
-  const ref = useRef(null);
-  
-  useEffect(() => {
-    const canvas = ref.current;
-    if (!canvas || !src) return;
-    
-    try {
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      
-      img.onload = () => {
-        try {
-          const d = size;
-          canvas.width = d;
-          canvas.height = d;
-          ctx.clearRect(0, 0, d, d);
-          
-          // 배경
-          ctx.fillStyle = bg;
-          ctx.beginPath();
-          ctx.arc(d / 2, d / 2, d / 2, 0, Math.PI * 2);
-          ctx.fill();
-          
-          // 원형 클립
-          ctx.save();
-          ctx.beginPath();
-          ctx.arc(d / 2, d / 2, d / 2, 0, Math.PI * 2);
-          ctx.clip();
-          
-          // "cover" 기준으로 원을 꽉 채우게 기본 스케일 계산
-          const iw = img.naturalWidth || img.width || 1;
-          const ih = img.naturalHeight || img.height || 1;
-          const baseScale = Math.max(d / iw, d / ih);
-          const s = baseScale * (userScale / 100);
-          const drawW = iw * s;
-          const drawH = ih * s;
-          
-          // posX/posY: 0~100을 "원 내부 좌표"로 해석 (50이 중앙)
-          const cx = (posX / 100) * d;
-          const cy = (posY / 100) * d;
-          
-          // pos를 "그려질 이미지의 중심"으로 잡기
-          const dx = cx - drawW / 2;
-          const dy = cy - drawH / 2;
-          
-          ctx.drawImage(img, dx, dy, drawW, drawH);
-          ctx.restore();
-          
-          // 테두리
-          if (borderWidth > 0) {
-            ctx.strokeStyle = borderColor;
-            ctx.lineWidth = borderWidth;
-            ctx.beginPath();
-            ctx.arc(d / 2, d / 2, d / 2 - borderWidth / 2, 0, Math.PI * 2);
-            ctx.stroke();
-          }
-        } catch (err) {
-          console.error('Canvas drawing error:', err);
-        }
-      };
-      
-      img.onerror = () => {
-        console.error('Failed to load image:', src);
-        // 이미지 로드 실패 시 배경만 그리기
-        try {
-          const d = size;
-          canvas.width = d;
-          canvas.height = d;
-          const ctx = canvas.getContext("2d");
-          if (ctx) {
-            ctx.clearRect(0, 0, d, d);
-            ctx.fillStyle = bg;
-            ctx.beginPath();
-            ctx.arc(d / 2, d / 2, d / 2, 0, Math.PI * 2);
-            ctx.fill();
-            if (borderWidth > 0) {
-              ctx.strokeStyle = borderColor;
-              ctx.lineWidth = borderWidth;
-              ctx.beginPath();
-              ctx.arc(d / 2, d / 2, d / 2 - borderWidth / 2, 0, Math.PI * 2);
-              ctx.stroke();
-            }
-          }
-        } catch (err) {
-          console.error('Fallback drawing error:', err);
-        }
-      };
-      
-      img.src = src;
-    } catch (err) {
-      console.error('CanvasCircleOverlay error:', err);
-    }
-  }, [src, size, posX, posY, userScale, bg, borderColor, borderWidth]);
-  
-  return <canvas ref={ref} style={{ width: size, height: size, display: "block", ...style }} />;
-}
 
 const ProductOptionsEditor = () => {
   const [title, setTitle] = useState('PRODUCT OPTION_제품 옵션');
@@ -199,28 +87,6 @@ const ProductOptionsEditor = () => {
 
   const [previewMode, setPreviewMode] = useState(false);
   const [dragging, setDragging] = useState(null);
-
-  // 광고 스크립트 로드
-  useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://pl28539791.effectivegatecpm.com/e0a030d49075e7508ace9906e2111ed2/invoke.js';
-    script.async = true;
-    script.setAttribute('data-cfasync', 'false');
-    
-    const adContainer = document.getElementById('adsterra-container');
-    if (adContainer && !document.getElementById('adsterra-script')) {
-      script.id = 'adsterra-script';
-      adContainer.appendChild(script);
-    }
-
-    return () => {
-      // cleanup
-      const existingScript = document.getElementById('adsterra-script');
-      if (existingScript) {
-        existingScript.remove();
-      }
-    };
-  }, []);
 
   // 텍스트 테두리 생성 함수
   const generateTextOutline = (color, width) => {
@@ -749,115 +615,90 @@ const ProductOptionsEditor = () => {
     }));
   };
 
-  // 이미지 로딩 대기 헬퍼 함수
-  const waitForImages = async (container) => {
-    const images = container.querySelectorAll('img');
-    const imagePromises = Array.from(images).map(img => {
-      if (img.complete && img.naturalHeight !== 0) {
-        return Promise.resolve();
-      }
-      return new Promise((resolve, reject) => {
-        img.onload = () => {
-          // decode까지 완료 대기
-          if (img.decode) {
-            img.decode().then(resolve).catch(resolve);
-          } else {
-            resolve();
-          }
-        };
-        img.onerror = resolve; // 에러도 무시하고 진행
-        // 타임아웃 설정
-        setTimeout(resolve, 5000);
-      });
-    });
-    await Promise.all(imagePromises);
-  };
-
-  // 폰트 로딩 대기 헬퍼 함수
-  const waitForFonts = async () => {
-    if (document.fonts && document.fonts.ready) {
-      await document.fonts.ready;
-    }
-    // 추가 대기 (폰트 렌더링 안정화)
-    await new Promise(resolve => setTimeout(resolve, 300));
-  };
-
   const exportImage = async () => {
     try {
-      // 미리보기 모드가 아니면 먼저 전환
       if (!document.getElementById('preview-area')) {
         setPreviewMode(true);
-        setTimeout(() => exportImage(), 800);
+        setTimeout(() => exportImage(), 500);
         return;
       }
+
+      const titleFonts = `<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />`;
+      const gmarketFont = `
+      @font-face {
+        font-family: 'Gmarket Sans';
+        font-style: normal;
+        font-weight: 700;
+        src: local('Gmarket Sans Bold'), local('GmarketSans-Bold'),
+        url('http://script.ebay.co.kr/fonts/GmarketSansBold.woff2') format('woff2'),
+        url('http://script.ebay.co.kr/fonts/GmarketSansBold.woff') format('woff');
+      }
+      @font-face {
+        font-family: 'Gmarket Sans';
+        font-style: normal;
+        font-weight: 500;
+        src: local('Gmarket Sans Medium'), local('GmarketSans-Medium'),
+        url('http://script.ebay.co.kr/fonts/GmarketSansMedium.woff2') format('woff2'),
+        url('http://script.ebay.co.kr/fonts/GmarketSansMedium.woff') format('woff');
+      }
+      @font-face {
+        font-family: 'Gmarket Sans';
+        font-style: normal;
+        font-weight: 300;
+        src: local('Gmarket Sans Light'), local('GmarketSans-Light'),
+        url('http://script.ebay.co.kr/fonts/GmarketSansLight.woff2') format('woff2'),
+        url('http://script.ebay.co.kr/fonts/GmarketSansLight.woff') format('woff');
+      }
+      ${jalnanFont ? `@font-face { font-family: 'Jalnan'; src: url('${jalnanFont}'); font-style: normal; }` : ''}
+      ${impactFont ? `@font-face { font-family: 'Impact'; src: url('${impactFont}'); font-style: normal; }` : ''}`;
 
       const previewArea = document.getElementById('preview-area');
-      if (!previewArea) {
-        alert('미리보기 영역을 찾을 수 없습니다.');
-        return;
-      }
+      const htmlContent = previewArea.innerHTML;
 
-      // 1. 모든 이미지 로딩 대기
-      await waitForImages(previewArea);
-      
-      // 2. 폰트 로딩 대기
-      await waitForFonts();
+      const html = `<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>상품 옵션</title>
+  ${titleFonts}
+  <style>${gmarketFont}
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Gmarket Sans', sans-serif; background: ${backgroundColor}; }
+    .container { width: 1000px; margin: 0 auto; padding: 20px 0; background: ${backgroundColor}; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+  <div class="container" id="capture">${htmlContent}</div>
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        html2canvas(document.getElementById('capture'), {
+          scale: 2, useCORS: true, allowTaint: true, backgroundColor: '${backgroundColor}'
+        }).then(canvas => {
+          canvas.toBlob(function(blob) {
+            const link = document.createElement('a');
+            link.download = 'product-options-' + Date.now() + '.png';
+            link.href = URL.createObjectURL(blob);
+            link.click();
+            URL.revokeObjectURL(link.href);
+            window.close();
+          }, 'image/png');
+        }).catch(err => alert('이미지 생성 실패: ' + err.message));
+      }, 500);
+    };
+  </script>
+</body>
+</html>`;
 
-      // 3. 추가 렌더링 안정화 대기
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      // 4. html2canvas로 캡처 (scale 2 = 고해상도)
-      const canvas = await html2canvas(previewArea, {
-        scale: 2, // 고해상도 출력
-        backgroundColor: backgroundColor,
-        logging: false,
-        useCORS: true,
-        allowTaint: false,
-        foreignObjectRendering: false,
-        imageTimeout: 0,
-        removeContainer: false,
-        width: 1000, // 고정 너비
-        windowWidth: 1000,
-        onclone: (clonedDoc) => {
-          // 모든 zoom 제거
-          const allElements = clonedDoc.querySelectorAll('*');
-          allElements.forEach(el => {
-            const style = el.style;
-            if (style.zoom) style.zoom = '';
-          });
-
-          // 모든 이미지 display: block, object-fit: contain, object-position: center 강제
-          const images = clonedDoc.querySelectorAll('img');
-          images.forEach(img => {
-            img.style.display = 'block';
-            img.style.objectFit = 'contain';
-            img.style.objectPosition = 'center';
-          });
-
-          // imgFrame 클래스 확인
-          const imgFrames = clonedDoc.querySelectorAll('.imgFrame');
-          imgFrames.forEach(frame => {
-            console.log('imgFrame:', frame.style.width, frame.style.height);
-          });
-        }
-      });
-
-      // 5. Blob으로 변환 후 다운로드
-      canvas.toBlob(function(blob) {
-        if (!blob) {
-          alert('이미지 생성에 실패했습니다.');
-          return;
-        }
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.download = 'product-options-' + Date.now() + '.png';
-        link.href = url;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const newWindow = window.open(url, '_blank', 'width=1200,height=800');
+      if (!newWindow) {
+        alert('팝업이 차단되었습니다. 팝업 차단을 해제해주세요.');
         URL.revokeObjectURL(url);
-      }, 'image/png', 1.0);
-
+      }
     } catch (error) {
       console.error('이미지 저장 오류:', error);
       alert('이미지 저장에 실패했습니다: ' + error.message);
@@ -865,13 +706,6 @@ const ProductOptionsEditor = () => {
   };
 
   const exportHTML = () => {
-    // 미리보기 모드로 전환
-    if (!document.getElementById('preview-area')) {
-      setPreviewMode(true);
-      setTimeout(() => exportHTML(), 500);
-      return;
-    }
-
     const titleFonts = `<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />`;
     
     const gmarketFont = `
@@ -909,12 +743,6 @@ const ProductOptionsEditor = () => {
       src: url('${impactFont}');
       font-style: normal;
     }` : ''}`;
-
-    // 미리보기 DOM에서 실제 HTML 가져오기
-    const previewArea = document.getElementById('preview-area');
-    const clonedContent = previewArea.cloneNode(true);
-    clonedContent.removeAttribute('id');
-    const previewHTML = clonedContent.outerHTML;
     
     const html = `<!DOCTYPE html>
 <html lang="ko">
@@ -925,55 +753,164 @@ const ProductOptionsEditor = () => {
   ${titleFonts}
   <style>${gmarketFont}
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Gmarket Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: ${backgroundColor}; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 20px 0; }
+    body { font-family: 'Gmarket Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: ${backgroundColor}; }
+    .container { width: 1000px; margin: 0 auto; padding: 20px 0; background: ${backgroundColor}; }
+    .title-section { 
+      background: ${titleBgColor}; 
+      color: ${titleTextColor}; 
+      padding: 0 20px; 
+      font-size: 32px; 
+      font-weight: bold; 
+      text-align: left;
+      position: relative;
+      padding-left: 45px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      padding-bottom: 0;
+    }
+    .title-section::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 20px;
+      background: ${titleAccentColor};
+    }
+    .title-english {
+      font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      font-weight: 700;
+      font-style: normal;
+      font-size: 32px;
+      line-height: 1;
+    }
+    .title-korean {
+      font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      font-weight: 700;
+      font-size: 26px;
+      line-height: 1;
+    }
+    .options-grid { 
+      display: grid;
+      grid-template-columns: repeat(2, 470px);
+      gap: 20px;
+      justify-content: center;
+      padding: ${titleEnabled ? '20px 20px 0 20px' : '0 20px'};
+      background: ${backgroundColor};
+    }
+    .option-item { 
+      width: 470px; 
+      background: white; 
+      border: 2px solid #ddd;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .option-header { 
+      background: #e0e0e0; 
+      padding: 8px 15px 8px 2px; 
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 52px;
+      height: 52px;
+    }
+    .option-number {
+      width: 48px;
+      height: 48px;
+      background: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      font-weight: 700;
+      font-style: normal;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.20);
+      flex-shrink: 0;
+      letter-spacing: -0.5px;
+    }
+    .option-title {
+      font-family: 'Gmarket Sans', sans-serif;
+      font-weight: 500;
+      transform: scaleX(0.95);
+      flex: 1;
+      padding-right: 10px;
+      display: flex;
+      align-items: center;
+      margin-top: 2px;
+    }
+    .option-specs { 
+      padding: 0;
+      font-size: 16px;
+      line-height: 1;
+      border-top: 1px solid #ddd;
+    }
+    .spec-item {
+      color: #535353;
+      border-bottom: 1px solid #ddd;
+    }
+    .spec-content {
+      padding: 8px 20px 4px 20px;
+      font-family: 'Gmarket Sans', sans-serif;
+      font-weight: 500;
+      transform: scaleX(0.95);
+      transform-origin: left;
+    }
+    .option-image-container { 
+      position: relative;
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
+    }
+    .option-image { 
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      position: relative;
+    }
   </style>
 </head>
 <body>
-  ${previewHTML}
-  <div style="text-align: center; padding: 20px; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);">
-    <button id="downloadBtn" style="padding: 12px 24px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: 500; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+  <div class="container">
+    ${titleEnabled ? `<div class="title-section">
+      <span class="title-english">${title.split('_')[0]}${title.split('_')[1] ? '_' : ''}</span>${title.split('_')[1] ? `<span class="title-korean">${title.split('_')[1]}</span>` : ''}
+    </div>` : ''}
+    <div class="options-grid">
+${options.map(opt => `      <div class="option-item" style="height: ${opt.height}px; display: flex; flex-direction: column;">
+        <div class="option-header">
+          ${opt.numberEnabled ? `<div style="position: relative; width: 48px; height: 48px; flex-shrink: 0; margin-top: -1px;">
+            <div style="position: absolute; left: 1px; top: 2px; width: 48px; height: 48px; border-radius: 50%; background: rgba(0,0,0,0.20);"></div>
+            <div class="option-number" style="position: relative; font-size: ${opt.numberSize}px; color: ${opt.numberColor || '#000000'}; font-weight: ${opt.numberBold ? 900 : 700}; font-style: ${opt.numberItalic ? 'italic' : 'normal'}; ${opt.numberOutline ? `text-shadow: ${generateTextOutline(opt.numberOutlineColor, opt.numberOutlineWidth || 1)};` : ''}">${opt.number}</div>
+          </div>` : ''}
+          <div class="option-title" style="font-size: ${opt.fontSize}px; color: ${opt.titleColor || '#000000'}; font-weight: ${opt.titleBold ? 900 : 500}; font-style: ${opt.titleItalic ? 'italic' : 'normal'}; transform-origin: ${opt.titleAlign === 'left' ? 'left' : opt.titleAlign === 'right' ? 'right' : 'center'}; ${opt.titleOutline ? `text-shadow: ${generateTextOutline(opt.titleOutlineColor, opt.titleOutlineWidth || 1)};` : ''}">
+            <div style="width: 100%; text-align: ${opt.titleAlign};">${opt.title}</div>
+          </div>
+        </div>
+        ${opt.specsEnabled && opt.specs.length > 0 ? `<div class="option-specs" style="font-size: ${opt.specsFontSize}px;">
+${opt.specs.map(spec => `          <div class="spec-item" style="color: ${opt.specsColor};"><div class="spec-content" style="text-align: ${opt.specsAlign}; transform-origin: ${opt.specsAlign === 'left' ? 'left' : opt.specsAlign === 'right' ? 'right' : 'center'};">${spec.text}</div></div>`).join('\n')}
+        </div>` : ''}
+        ${opt.image || opt.circleOverlay.enabled || opt.textBox.enabled ? `<div class="option-image-container">
+          ${opt.image ? `<img src="${opt.image}" alt="${opt.title}" class="option-image" style="left: ${(opt.imagePosition.x - 50) * 0.5}%; top: ${(opt.imagePosition.y - 50) * 0.5}%;">` : ''}
+          ${opt.circleOverlay.enabled ? `<div style="position: absolute; left: ${opt.circleOverlay.position.x}%; top: ${opt.circleOverlay.position.y}%; width: ${opt.circleOverlay.size.width}px; height: ${opt.circleOverlay.size.height}px; border-radius: 50%; overflow: hidden; border: 3px solid #ddd; background-color: ${opt.circleOverlay.backgroundColor || '#FFFFFF'}; z-index: ${opt.circleOverlay.zIndex === 'front' ? 2 : 1}; transform: translate(-50%, -50%);">${opt.circleOverlay.image ? `<img src="${opt.circleOverlay.image}" alt="detail" style="width: 100%; height: 100%; object-fit: contain; position: absolute; left: ${opt.circleOverlay.innerImage?.position?.x || 50}%; top: ${opt.circleOverlay.innerImage?.position?.y || 50}%; transform: translate(-50%, -50%) scale(${(opt.circleOverlay.innerImage?.scale || 100) / 100});">` : ''}</div>` : ''}
+          ${opt.textBox.enabled && opt.textBox.text ? `<div style="position: absolute; left: ${opt.textBox.position?.x || 50}%; top: ${opt.textBox.position?.y || 20}%; transform: translate(-50%, -50%); font-size: ${opt.textBox.fontSize}px; color: ${opt.textBox.color}; font-family: 'Gmarket Sans', sans-serif; font-weight: ${opt.textBox.bold ? 900 : 500}; font-style: ${opt.textBox.italic ? 'italic' : 'normal'}; white-space: nowrap; z-index: 3; ${opt.textBox.outline ? `text-shadow: ${generateTextOutline(opt.textBox.outlineColor, opt.textBox.outlineWidth || 1)};` : ''}">${opt.textBox.text}</div>` : ''}
+        </div>` : ''}
+      </div>`).join('\n')}
+    </div>
+  </div>
+  <div style="text-align: center; padding: 20px;">
+    <button id="downloadBtn" style="padding: 12px 24px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: 500;">
       📥 이미지로 다운로드
     </button>
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script>
-    // 모든 이미지 로딩 대기
-    async function waitForImages() {
-      const images = document.querySelectorAll('img');
-      const promises = Array.from(images).map(img => {
-        if (img.complete && img.naturalHeight !== 0) {
-          return Promise.resolve();
-        }
-        return new Promise(resolve => {
-          img.onload = () => {
-            if (img.decode) {
-              img.decode().then(resolve).catch(resolve);
-            } else {
-              resolve();
-            }
-          };
-          img.onerror = resolve;
-          setTimeout(resolve, 5000);
-        });
-      });
-      await Promise.all(promises);
-    }
-
-    // 폰트 로딩 대기
-    async function waitForFonts() {
-      if (document.fonts && document.fonts.ready) {
-        await document.fonts.ready;
-      }
-      await new Promise(resolve => setTimeout(resolve, 300));
-    }
-
-    window.onload = async function() {
-      await waitForImages();
-      console.log('모든 이미지 로드 완료');
-    };
-    
     document.getElementById('downloadBtn').addEventListener('click', async function() {
-      const container = document.querySelector('[style*="width: 1000px"]') || document.querySelector('div');
+      const container = document.querySelector('.container');
       if (!container) {
         alert('컨테이너를 찾을 수 없습니다.');
         return;
@@ -982,38 +919,16 @@ const ProductOptionsEditor = () => {
       this.textContent = '⏳ 이미지 생성 중...';
       this.disabled = true;
       
-      // 이미지 및 폰트 로딩 대기
-      await waitForImages();
-      await waitForFonts();
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
       try {
         const canvas = await html2canvas(container, {
           scale: 2,
           backgroundColor: '${backgroundColor}',
           logging: false,
           useCORS: true,
-          allowTaint: false,
+          allowTaint: true,
           foreignObjectRendering: false,
           imageTimeout: 0,
-          removeContainer: false,
-          width: 1000,
-          windowWidth: 1000,
-          onclone: (clonedDoc) => {
-            // zoom 제거
-            const allElements = clonedDoc.querySelectorAll('*');
-            allElements.forEach(el => {
-              if (el.style.zoom) el.style.zoom = '';
-            });
-            
-            // 모든 이미지 display: block, object-fit: contain, object-position: center 강제
-            const images = clonedDoc.querySelectorAll('img');
-            images.forEach(img => {
-              img.style.display = 'block';
-              img.style.objectFit = 'contain';
-              img.style.objectPosition = 'center';
-            });
-          }
+          removeContainer: false
         });
         
         canvas.toBlob(function(blob) {
@@ -1024,11 +939,10 @@ const ProductOptionsEditor = () => {
           link.click();
           URL.revokeObjectURL(url);
           
-          document.getElementById('downloadBtn').textContent = '✅ 다운로드 완료!';
-          setTimeout(() => window.close(), 1000);
-        }, 'image/png', 1.0);
+          document.getElementById('downloadBtn').textContent = '📥 이미지로 다운로드';
+          document.getElementById('downloadBtn').disabled = false;
+        }, 'image/png');
       } catch (error) {
-        console.error('Error:', error);
         alert('이미지 생성 실패: ' + error.message);
         this.textContent = '📥 이미지로 다운로드';
         this.disabled = false;
@@ -1074,13 +988,7 @@ const ProductOptionsEditor = () => {
         </div>
 
         <div className="flex justify-center py-10">
-          <div id="preview-area" style={{ 
-            width: '1000px', 
-            padding: '20px 0', 
-            background: backgroundColor,
-            position: 'relative',
-            overflow: 'hidden'
-          }}>
+          <div id="preview-area" style={{ width: '1000px', padding: '20px 0', background: backgroundColor }}>
             {titleEnabled && (
             <div 
               style={{ 
@@ -1212,63 +1120,57 @@ const ProductOptionsEditor = () => {
                       position: 'relative',
                       flex: 1,
                       overflow: 'hidden',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                       minHeight: 0
                     }}>
                       {opt.image && (
-                        <div 
-                          className="imgFrame"
-                          style={{
+                        <img 
+                          src={opt.image} 
+                          alt={opt.title}
+                          style={{ 
+                            width: '100%',
+                            height: '100%',
+                            maxWidth: '100%', 
+                            maxHeight: '100%', 
+                            objectFit: 'contain',
                             position: 'absolute',
                             left: `${opt.imagePosition.x}%`,
                             top: `${opt.imagePosition.y}%`,
-                            width: `${466 * (opt.imagePosition.scale || 100) / 100}px`,
-                            height: `${(opt.height - 52 - (opt.specsEnabled && opt.specs.length > 0 ? opt.specs.length * 30 : 0)) * (opt.imagePosition.scale || 100) / 100}px`,
-                            transform: 'translate(-50%, -50%)',
+                            transform: `translate(-50%, -50%) scale(${(opt.imagePosition.scale || 100) / 100})`,
                             zIndex: opt.circleOverlay.enabled && opt.circleOverlay.zIndex === 'front' ? 1 : 2
                           }}
-                        >
-                          <img 
-                            src={opt.image} 
-                            alt={opt.title}
-                            style={{ 
-                              display: 'block',
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'contain',
-                              objectPosition: 'center'
-                            }}
-                          />
-                        </div>
+                        />
                       )}
                       {opt.circleOverlay.enabled && (
-                        <div
+                        <div 
                           style={{
                             position: 'absolute',
                             left: `${opt.circleOverlay.position.x}%`,
                             top: `${opt.circleOverlay.position.y}%`,
-                            transform: 'translate(-50%, -50%)',
-                            zIndex: opt.circleOverlay.zIndex === 'front' ? 2 : 1
+                            width: `${opt.circleOverlay.size.width}px`,
+                            height: `${opt.circleOverlay.size.height}px`,
+                            borderRadius: '50%',
+                            overflow: 'hidden',
+                            border: '3px solid #ddd',
+                            backgroundColor: opt.circleOverlay.backgroundColor || '#FFFFFF',
+                            zIndex: opt.circleOverlay.zIndex === 'front' ? 2 : 1,
+                            transform: 'translate(-50%, -50%)'
                           }}
                         >
-                          {opt.circleOverlay.image ? (
-                            <CanvasCircleOverlay
+                          {opt.circleOverlay.image && (
+                            <img 
                               src={opt.circleOverlay.image}
-                              size={opt.circleOverlay.size.width}
-                              posX={opt.circleOverlay.innerImage?.position?.x || 50}
-                              posY={opt.circleOverlay.innerImage?.position?.y || 50}
-                              userScale={opt.circleOverlay.innerImage?.scale || 100}
-                              bg={opt.circleOverlay.backgroundColor || '#FFFFFF'}
-                              borderColor="#ddd"
-                              borderWidth={3}
-                            />
-                          ) : (
-                            <div
+                              alt="detail"
                               style={{
-                                width: `${opt.circleOverlay.size.width}px`,
-                                height: `${opt.circleOverlay.size.height}px`,
-                                borderRadius: '50%',
-                                backgroundColor: opt.circleOverlay.backgroundColor || '#FFFFFF',
-                                border: '3px solid #ddd'
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'contain',
+                                position: 'absolute',
+                                left: `${opt.circleOverlay.innerImage?.position?.x || 50}%`,
+                                top: `${opt.circleOverlay.innerImage?.position?.y || 50}%`,
+                                transform: `translate(-50%, -50%) scale(${(opt.circleOverlay.innerImage?.scale || 100) / 100})`
                               }}
                             />
                           )}
@@ -1315,8 +1217,13 @@ const ProductOptionsEditor = () => {
         <div className="sticky" style={{ top: '50%', transform: 'translateY(-50%)' }}>
           <div className="bg-white border-2 border-dashed border-gray-300 rounded-lg p-3 text-center shadow-sm">
             <p className="text-xs text-gray-500 mb-2 font-semibold">Adsterra</p>
-            <div className="bg-gray-50 rounded p-2 min-h-[600px]" id="adsterra-container">
-              <div id="container-e0a030d49075e7508ace9906e2111ed2"></div>
+            <div className="bg-gray-50 rounded p-2 min-h-[600px] flex items-center justify-center">
+              {/* 여기에 구글 애드센스 코드를 넣으세요 */}
+              <div className="text-gray-400 text-sm">
+                <p className="font-medium">광고 영역</p>
+                <p className="text-xs mt-2">160 × 600</p>
+                <p className="text-xs text-gray-300 mt-4">스크롤을 따라<br/>내려갑니다</p>
+              </div>
             </div>
           </div>
         </div>
@@ -2375,13 +2282,19 @@ const ProductOptionsEditor = () => {
                             />
                           )}
                           {option.circleOverlay.enabled && (
-                            <div
+                            <div 
                               style={{
                                 position: 'absolute',
                                 left: `${option.circleOverlay.position.x}%`,
                                 top: `${option.circleOverlay.position.y}%`,
-                                transform: 'translate(-50%, -50%)',
+                                width: `${option.circleOverlay.size.width}px`,
+                                height: `${option.circleOverlay.size.height}px`,
+                                borderRadius: '50%',
+                                overflow: 'hidden',
+                                border: '3px solid #ddd',
+                                backgroundColor: option.circleOverlay.backgroundColor || '#FFFFFF',
                                 zIndex: option.circleOverlay.zIndex === 'front' ? 2 : 1,
+                                transform: 'translate(-50%, -50%)',
                                 cursor: 'move'
                               }}
                               onMouseDown={(e) => {
@@ -2389,28 +2302,21 @@ const ProductOptionsEditor = () => {
                                 startDrag(option.id, 'circle', e);
                               }}
                             >
-                              {option.circleOverlay.image ? (
-                                <CanvasCircleOverlay
+                              {option.circleOverlay.image && (
+                                <img 
                                   src={option.circleOverlay.image}
-                                  size={option.circleOverlay.size.width}
-                                  posX={option.circleOverlay.innerImage?.position?.x || 50}
-                                  posY={option.circleOverlay.innerImage?.position?.y || 50}
-                                  userScale={option.circleOverlay.innerImage?.scale || 100}
-                                  bg={option.circleOverlay.backgroundColor || '#FFFFFF'}
-                                  borderColor="#ddd"
-                                  borderWidth={3}
-                                  style={{ pointerEvents: 'none' }}
-                                />
-                              ) : (
-                                <div
+                                  alt="원형 미리보기"
                                   style={{
-                                    width: `${option.circleOverlay.size.width}px`,
-                                    height: `${option.circleOverlay.size.height}px`,
-                                    borderRadius: '50%',
-                                    backgroundColor: option.circleOverlay.backgroundColor || '#FFFFFF',
-                                    border: '3px solid #ddd',
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'contain',
+                                    position: 'absolute',
+                                    left: `${option.circleOverlay.innerImage?.position?.x || 50}%`,
+                                    top: `${option.circleOverlay.innerImage?.position?.y || 50}%`,
+                                    transform: `translate(-50%, -50%) scale(${(option.circleOverlay.innerImage?.scale || 100) / 100})`,
                                     pointerEvents: 'none'
                                   }}
+                                  draggable="false"
                                 />
                               )}
                             </div>
