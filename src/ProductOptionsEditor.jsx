@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Download, Image, ChevronUp, ChevronDown, X, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
+import html2canvas from 'html2canvas';
 
 const ProductOptionsEditor = () => {
   const [title, setTitle] = useState('PRODUCT OPTION_제품 옵션');
@@ -638,88 +639,52 @@ const ProductOptionsEditor = () => {
 
   const exportImage = async () => {
     try {
+      // 미리보기 모드가 아니면 먼저 전환
       if (!document.getElementById('preview-area')) {
         setPreviewMode(true);
         setTimeout(() => exportImage(), 500);
         return;
       }
 
-      const titleFonts = `<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />`;
-      const gmarketFont = `
-      @font-face {
-        font-family: 'Gmarket Sans';
-        font-style: normal;
-        font-weight: 700;
-        src: local('Gmarket Sans Bold'), local('GmarketSans-Bold'),
-        url('http://script.ebay.co.kr/fonts/GmarketSansBold.woff2') format('woff2'),
-        url('http://script.ebay.co.kr/fonts/GmarketSansBold.woff') format('woff');
-      }
-      @font-face {
-        font-family: 'Gmarket Sans';
-        font-style: normal;
-        font-weight: 500;
-        src: local('Gmarket Sans Medium'), local('GmarketSans-Medium'),
-        url('http://script.ebay.co.kr/fonts/GmarketSansMedium.woff2') format('woff2'),
-        url('http://script.ebay.co.kr/fonts/GmarketSansMedium.woff') format('woff');
-      }
-      @font-face {
-        font-family: 'Gmarket Sans';
-        font-style: normal;
-        font-weight: 300;
-        src: local('Gmarket Sans Light'), local('GmarketSans-Light'),
-        url('http://script.ebay.co.kr/fonts/GmarketSansLight.woff2') format('woff2'),
-        url('http://script.ebay.co.kr/fonts/GmarketSansLight.woff') format('woff');
-      }
-      ${jalnanFont ? `@font-face { font-family: 'Jalnan'; src: url('${jalnanFont}'); font-style: normal; }` : ''}
-      ${impactFont ? `@font-face { font-family: 'Impact'; src: url('${impactFont}'); font-style: normal; }` : ''}`;
-
       const previewArea = document.getElementById('preview-area');
-      const htmlContent = previewArea.innerHTML;
-
-      const html = `<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>상품 옵션</title>
-  ${titleFonts}
-  <style>${gmarketFont}
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Gmarket Sans', sans-serif; background: ${backgroundColor}; }
-    .container { width: 1000px; margin: 0 auto; padding: 20px 0; background: ${backgroundColor}; }
-  </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-</head>
-<body>
-  <div class="container" id="capture">${htmlContent}</div>
-  <script>
-    window.onload = function() {
-      setTimeout(function() {
-        html2canvas(document.getElementById('capture'), {
-          scale: 2, useCORS: true, allowTaint: true, backgroundColor: '${backgroundColor}'
-        }).then(canvas => {
-          canvas.toBlob(function(blob) {
-            const link = document.createElement('a');
-            link.download = 'product-options-' + Date.now() + '.png';
-            link.href = URL.createObjectURL(blob);
-            link.click();
-            URL.revokeObjectURL(link.href);
-            window.close();
-          }, 'image/png');
-        }).catch(err => alert('이미지 생성 실패: ' + err.message));
-      }, 500);
-    };
-  </script>
-</body>
-</html>`;
-
-      const blob = new Blob([html], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      const newWindow = window.open(url, '_blank', 'width=1200,height=800');
-      if (!newWindow) {
-        alert('팝업이 차단되었습니다. 팝업 차단을 해제해주세요.');
-        URL.revokeObjectURL(url);
+      if (!previewArea) {
+        alert('미리보기 영역을 찾을 수 없습니다.');
+        return;
       }
+
+      // 직접 캡처
+      const canvas = await html2canvas(previewArea, {
+        scale: 2,
+        backgroundColor: backgroundColor,
+        logging: false,
+        useCORS: true,
+        allowTaint: true,
+        foreignObjectRendering: false,
+        imageTimeout: 0,
+        removeContainer: false,
+        onclone: function(clonedDoc) {
+          // 복제된 문서의 모든 이미지가 제대로 로드되었는지 확인
+          const clonedImages = clonedDoc.querySelectorAll('img');
+          clonedImages.forEach(img => {
+            if (!img.complete) {
+              console.warn('Image not loaded:', img.src);
+            }
+          });
+        }
+      });
+
+      // Blob으로 변환 후 다운로드
+      canvas.toBlob(function(blob) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = 'product-options-' + Date.now() + '.png';
+        link.href = url;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 'image/png');
+
     } catch (error) {
       console.error('이미지 저장 오류:', error);
       alert('이미지 저장에 실패했습니다: ' + error.message);
