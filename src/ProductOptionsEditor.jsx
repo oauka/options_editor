@@ -637,12 +637,45 @@ const ProductOptionsEditor = () => {
     }));
   };
 
+  // 이미지 로딩 대기 헬퍼 함수
+  const waitForImages = async (container) => {
+    const images = container.querySelectorAll('img');
+    const imagePromises = Array.from(images).map(img => {
+      if (img.complete && img.naturalHeight !== 0) {
+        return Promise.resolve();
+      }
+      return new Promise((resolve, reject) => {
+        img.onload = () => {
+          // decode까지 완료 대기
+          if (img.decode) {
+            img.decode().then(resolve).catch(resolve);
+          } else {
+            resolve();
+          }
+        };
+        img.onerror = resolve; // 에러도 무시하고 진행
+        // 타임아웃 설정
+        setTimeout(resolve, 5000);
+      });
+    });
+    await Promise.all(imagePromises);
+  };
+
+  // 폰트 로딩 대기 헬퍼 함수
+  const waitForFonts = async () => {
+    if (document.fonts && document.fonts.ready) {
+      await document.fonts.ready;
+    }
+    // 추가 대기 (폰트 렌더링 안정화)
+    await new Promise(resolve => setTimeout(resolve, 300));
+  };
+
   const exportImage = async () => {
     try {
       // 미리보기 모드가 아니면 먼저 전환
       if (!document.getElementById('preview-area')) {
         setPreviewMode(true);
-        setTimeout(() => exportImage(), 500);
+        setTimeout(() => exportImage(), 800);
         return;
       }
 
@@ -652,29 +685,54 @@ const ProductOptionsEditor = () => {
         return;
       }
 
-      // 직접 캡처
+      // 1. 모든 이미지 로딩 대기
+      await waitForImages(previewArea);
+      
+      // 2. 폰트 로딩 대기
+      await waitForFonts();
+
+      // 3. 추가 렌더링 안정화 대기
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // 4. html2canvas로 캡처 (scale 2 = 고해상도)
       const canvas = await html2canvas(previewArea, {
-        scale: 2,
+        scale: 2, // 고해상도 출력
         backgroundColor: backgroundColor,
         logging: false,
         useCORS: true,
-        allowTaint: true,
+        allowTaint: false,
         foreignObjectRendering: false,
         imageTimeout: 0,
         removeContainer: false,
-        onclone: function(clonedDoc) {
-          // 복제된 문서의 모든 이미지가 제대로 로드되었는지 확인
-          const clonedImages = clonedDoc.querySelectorAll('img');
-          clonedImages.forEach(img => {
-            if (!img.complete) {
-              console.warn('Image not loaded:', img.src);
+        width: 1000, // 고정 너비
+        windowWidth: 1000,
+        onclone: (clonedDoc) => {
+          // 복제된 문서에서 모든 transform 제거
+          const allElements = clonedDoc.querySelectorAll('*');
+          allElements.forEach(el => {
+            const style = el.style;
+            // zoom 제거
+            if (style.zoom) style.zoom = '';
+            // transform의 scale만 제거하고 translate는 유지
+            if (style.transform && !style.transform.includes('translate')) {
+              style.transform = '';
             }
+          });
+
+          // 모든 이미지를 display: block으로
+          const images = clonedDoc.querySelectorAll('img');
+          images.forEach(img => {
+            img.style.display = 'block';
           });
         }
       });
 
-      // Blob으로 변환 후 다운로드
+      // 5. Blob으로 변환 후 다운로드
       canvas.toBlob(function(blob) {
+        if (!blob) {
+          alert('이미지 생성에 실패했습니다.');
+          return;
+        }
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.download = 'product-options-' + Date.now() + '.png';
@@ -683,7 +741,7 @@ const ProductOptionsEditor = () => {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-      }, 'image/png');
+      }, 'image/png', 1.0);
 
     } catch (error) {
       console.error('이미지 저장 오류:', error);
@@ -764,21 +822,39 @@ const ProductOptionsEditor = () => {
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script>
-    window.onload = function() {
+    // 모든 이미지 로딩 대기
+    async function waitForImages() {
       const images = document.querySelectorAll('img');
-      let loadedCount = 0;
-      const totalImages = images.length;
-      
-      images.forEach(img => {
-        if (img.complete) {
-          loadedCount++;
-        } else {
-          img.onload = () => loadedCount++;
-          img.onerror = () => loadedCount++;
+      const promises = Array.from(images).map(img => {
+        if (img.complete && img.naturalHeight !== 0) {
+          return Promise.resolve();
         }
+        return new Promise(resolve => {
+          img.onload = () => {
+            if (img.decode) {
+              img.decode().then(resolve).catch(resolve);
+            } else {
+              resolve();
+            }
+          };
+          img.onerror = resolve;
+          setTimeout(resolve, 5000);
+        });
       });
-      
-      console.log(totalImages + '개 이미지 로드 완료');
+      await Promise.all(promises);
+    }
+
+    // 폰트 로딩 대기
+    async function waitForFonts() {
+      if (document.fonts && document.fonts.ready) {
+        await document.fonts.ready;
+      }
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+
+    window.onload = async function() {
+      await waitForImages();
+      console.log('모든 이미지 로드 완료');
     };
     
     document.getElementById('downloadBtn').addEventListener('click', async function() {
@@ -791,18 +867,36 @@ const ProductOptionsEditor = () => {
       this.textContent = '⏳ 이미지 생성 중...';
       this.disabled = true;
       
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // 이미지 및 폰트 로딩 대기
+      await waitForImages();
+      await waitForFonts();
+      await new Promise(resolve => setTimeout(resolve, 200));
       
       try {
         const canvas = await html2canvas(container, {
           scale: 2,
           backgroundColor: '${backgroundColor}',
-          logging: true,
+          logging: false,
           useCORS: true,
           allowTaint: false,
           foreignObjectRendering: false,
           imageTimeout: 0,
-          removeContainer: false
+          removeContainer: false,
+          width: 1000,
+          windowWidth: 1000,
+          onclone: (clonedDoc) => {
+            // zoom 및 불필요한 transform 제거
+            const allElements = clonedDoc.querySelectorAll('*');
+            allElements.forEach(el => {
+              if (el.style.zoom) el.style.zoom = '';
+            });
+            
+            // 모든 이미지 display: block
+            const images = clonedDoc.querySelectorAll('img');
+            images.forEach(img => {
+              img.style.display = 'block';
+            });
+          }
         });
         
         canvas.toBlob(function(blob) {
@@ -815,7 +909,7 @@ const ProductOptionsEditor = () => {
           
           document.getElementById('downloadBtn').textContent = '✅ 다운로드 완료!';
           setTimeout(() => window.close(), 1000);
-        }, 'image/png');
+        }, 'image/png', 1.0);
       } catch (error) {
         console.error('Error:', error);
         alert('이미지 생성 실패: ' + error.message);
@@ -863,7 +957,13 @@ const ProductOptionsEditor = () => {
         </div>
 
         <div className="flex justify-center py-10">
-          <div id="preview-area" style={{ width: '1000px', padding: '20px 0', background: backgroundColor }}>
+          <div id="preview-area" style={{ 
+            width: '1000px', 
+            padding: '20px 0', 
+            background: backgroundColor,
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
             {titleEnabled && (
             <div 
               style={{ 
@@ -1005,6 +1105,7 @@ const ProductOptionsEditor = () => {
                           src={opt.image} 
                           alt={opt.title}
                           style={{ 
+                            display: 'block',
                             width: '100%',
                             height: '100%',
                             maxWidth: '100%', 
@@ -1039,6 +1140,7 @@ const ProductOptionsEditor = () => {
                               src={opt.circleOverlay.image}
                               alt="detail"
                               style={{
+                                display: 'block',
                                 width: '100%',
                                 height: '100%',
                                 objectFit: 'contain',
