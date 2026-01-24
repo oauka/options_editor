@@ -888,12 +888,6 @@ const ProductOptionsEditor = () => {
       justify-content: center;
       min-height: 0;
     }
-    .option-image { 
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
-      position: relative;
-    }
   </style>
 </head>
 <body>
@@ -916,7 +910,7 @@ ${options.map(opt => `      <div class="option-item" style="height: ${opt.height
 ${opt.specs.map(spec => `          <div class="spec-item" style="color: ${opt.specsColor};"><div class="spec-content" style="text-align: ${opt.specsAlign}; transform-origin: ${opt.specsAlign === 'left' ? 'left' : opt.specsAlign === 'right' ? 'right' : 'center'};">${spec.text}</div></div>`).join('\n')}
         </div>` : ''}
         ${opt.image || opt.circleOverlay.enabled || opt.textBox.enabled ? `<div class="option-image-container">
-          ${opt.image ? `<img src="${opt.image}" alt="${opt.title}" class="option-image" style="left: ${(opt.imagePosition.x - 50) * 0.5}%; top: ${(opt.imagePosition.y - 50) * 0.5}%;">` : ''}
+          ${opt.image ? `<img src="${opt.image}" alt="${opt.title}" style="width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; position: absolute; left: ${opt.imagePosition.x}%; top: ${opt.imagePosition.y}%; transform: translate(-50%, -50%) scale(${(opt.imagePosition.scale || 100) / 100}); z-index: ${opt.circleOverlay.enabled && opt.circleOverlay.zIndex === 'front' ? 1 : 2};">` : ''}
           ${opt.circleOverlay.enabled ? `<div style="position: absolute; left: ${opt.circleOverlay.position.x}%; top: ${opt.circleOverlay.position.y}%; width: ${opt.circleOverlay.size.width}px; height: ${opt.circleOverlay.size.height}px; border-radius: 50%; overflow: hidden; border: 3px solid #ddd; background-color: ${opt.circleOverlay.backgroundColor || '#FFFFFF'}; z-index: ${opt.circleOverlay.zIndex === 'front' ? 2 : 1}; transform: translate(-50%, -50%);">${opt.circleOverlay.image ? `<img src="${opt.circleOverlay.image}" alt="detail" style="width: 100%; height: 100%; object-fit: contain; position: absolute; left: ${opt.circleOverlay.innerImage?.position?.x || 50}%; top: ${opt.circleOverlay.innerImage?.position?.y || 50}%; transform: translate(-50%, -50%) scale(${(opt.circleOverlay.innerImage?.scale || 100) / 100});">` : ''}</div>` : ''}
           ${opt.textBox.enabled && opt.textBox.text ? `<div style="position: absolute; left: ${opt.textBox.position?.x || 50}%; top: ${opt.textBox.position?.y || 20}%; transform: translate(-50%, -50%); font-size: ${opt.textBox.fontSize}px; color: ${opt.textBox.color}; font-family: 'Gmarket Sans', sans-serif; font-weight: ${opt.textBox.bold ? 900 : 500}; font-style: ${opt.textBox.italic ? 'italic' : 'normal'}; white-space: nowrap; z-index: 3; ${opt.textBox.outline ? `text-shadow: ${generateTextOutline(opt.textBox.outlineColor, opt.textBox.outlineWidth || 1)};` : ''}">${opt.textBox.text}</div>` : ''}
         </div>` : ''}
@@ -930,6 +924,24 @@ ${opt.specs.map(spec => `          <div class="spec-item" style="color: ${opt.sp
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script>
+    // 모든 이미지가 로드될 때까지 대기
+    window.onload = function() {
+      const images = document.querySelectorAll('img');
+      let loadedCount = 0;
+      const totalImages = images.length;
+      
+      images.forEach(img => {
+        if (img.complete) {
+          loadedCount++;
+        } else {
+          img.onload = () => loadedCount++;
+          img.onerror = () => loadedCount++;
+        }
+      });
+      
+      console.log(totalImages + '개 이미지 로드 완료');
+    };
+    
     document.getElementById('downloadBtn').addEventListener('click', async function() {
       const container = document.querySelector('.container');
       if (!container) {
@@ -940,13 +952,16 @@ ${opt.specs.map(spec => `          <div class="spec-item" style="color: ${opt.sp
       this.textContent = '⏳ 이미지 생성 중...';
       this.disabled = true;
       
+      // 렌더링 완료 대기
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       try {
         const canvas = await html2canvas(container, {
           scale: 2,
           backgroundColor: '${backgroundColor}',
-          logging: false,
+          logging: true,
           useCORS: true,
-          allowTaint: true,
+          allowTaint: false,
           foreignObjectRendering: false,
           imageTimeout: 0,
           removeContainer: false
@@ -960,10 +975,11 @@ ${opt.specs.map(spec => `          <div class="spec-item" style="color: ${opt.sp
           link.click();
           URL.revokeObjectURL(url);
           
-          document.getElementById('downloadBtn').textContent = '📥 이미지로 다운로드';
-          document.getElementById('downloadBtn').disabled = false;
+          document.getElementById('downloadBtn').textContent = '✅ 다운로드 완료!';
+          setTimeout(() => window.close(), 1000);
         }, 'image/png');
       } catch (error) {
+        console.error('Error:', error);
         alert('이미지 생성 실패: ' + error.message);
         this.textContent = '📥 이미지로 다운로드';
         this.disabled = false;
