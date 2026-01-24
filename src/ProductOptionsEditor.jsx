@@ -20,62 +20,95 @@ function CanvasCircleOverlay({
     const canvas = ref.current;
     if (!canvas || !src) return;
     
-    const ctx = canvas.getContext("2d");
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    
-    img.onload = () => {
-      const d = size;
-      canvas.width = d;
-      canvas.height = d;
-      ctx.clearRect(0, 0, d, d);
+    try {
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
       
-      // 배경
-      ctx.fillStyle = bg;
-      ctx.beginPath();
-      ctx.arc(d / 2, d / 2, d / 2, 0, Math.PI * 2);
-      ctx.fill();
+      const img = new Image();
+      img.crossOrigin = "anonymous";
       
-      // 원형 클립
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(d / 2, d / 2, d / 2, 0, Math.PI * 2);
-      ctx.clip();
+      img.onload = () => {
+        try {
+          const d = size;
+          canvas.width = d;
+          canvas.height = d;
+          ctx.clearRect(0, 0, d, d);
+          
+          // 배경
+          ctx.fillStyle = bg;
+          ctx.beginPath();
+          ctx.arc(d / 2, d / 2, d / 2, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // 원형 클립
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(d / 2, d / 2, d / 2, 0, Math.PI * 2);
+          ctx.clip();
+          
+          // "cover" 기준으로 원을 꽉 채우게 기본 스케일 계산
+          const iw = img.naturalWidth || img.width || 1;
+          const ih = img.naturalHeight || img.height || 1;
+          const baseScale = Math.max(d / iw, d / ih);
+          const s = baseScale * (userScale / 100);
+          const drawW = iw * s;
+          const drawH = ih * s;
+          
+          // posX/posY: 0~100을 "원 내부 좌표"로 해석 (50이 중앙)
+          const cx = (posX / 100) * d;
+          const cy = (posY / 100) * d;
+          
+          // pos를 "그려질 이미지의 중심"으로 잡기
+          const dx = cx - drawW / 2;
+          const dy = cy - drawH / 2;
+          
+          ctx.drawImage(img, dx, dy, drawW, drawH);
+          ctx.restore();
+          
+          // 테두리
+          if (borderWidth > 0) {
+            ctx.strokeStyle = borderColor;
+            ctx.lineWidth = borderWidth;
+            ctx.beginPath();
+            ctx.arc(d / 2, d / 2, d / 2 - borderWidth / 2, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        } catch (err) {
+          console.error('Canvas drawing error:', err);
+        }
+      };
       
-      // "cover" 기준으로 원을 꽉 채우게 기본 스케일 계산
-      const iw = img.naturalWidth || img.width;
-      const ih = img.naturalHeight || img.height;
-      const baseScale = Math.max(d / iw, d / ih);
-      const s = baseScale * (userScale / 100);
-      const drawW = iw * s;
-      const drawH = ih * s;
+      img.onerror = () => {
+        console.error('Failed to load image:', src);
+        // 이미지 로드 실패 시 배경만 그리기
+        try {
+          const d = size;
+          canvas.width = d;
+          canvas.height = d;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.clearRect(0, 0, d, d);
+            ctx.fillStyle = bg;
+            ctx.beginPath();
+            ctx.arc(d / 2, d / 2, d / 2, 0, Math.PI * 2);
+            ctx.fill();
+            if (borderWidth > 0) {
+              ctx.strokeStyle = borderColor;
+              ctx.lineWidth = borderWidth;
+              ctx.beginPath();
+              ctx.arc(d / 2, d / 2, d / 2 - borderWidth / 2, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+          }
+        } catch (err) {
+          console.error('Fallback drawing error:', err);
+        }
+      };
       
-      // posX/posY: 0~100을 "원 내부 좌표"로 해석 (50이 중앙)
-      const cx = (posX / 100) * d;
-      const cy = (posY / 100) * d;
-      
-      // pos를 "그려질 이미지의 중심"으로 잡기
-      const dx = cx - drawW / 2;
-      const dy = cy - drawH / 2;
-      
-      ctx.drawImage(img, dx, dy, drawW, drawH);
-      ctx.restore();
-      
-      // 테두리
-      if (borderWidth > 0) {
-        ctx.strokeStyle = borderColor;
-        ctx.lineWidth = borderWidth;
-        ctx.beginPath();
-        ctx.arc(d / 2, d / 2, d / 2 - borderWidth / 2, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-    };
-    
-    img.onerror = () => {
-      console.error('Failed to load image:', src);
-    };
-    
-    img.src = src;
+      img.src = src;
+    } catch (err) {
+      console.error('CanvasCircleOverlay error:', err);
+    }
   }, [src, size, posX, posY, userScale, bg, borderColor, borderWidth]);
   
   return <canvas ref={ref} style={{ width: size, height: size, display: "block", ...style }} />;
@@ -1207,7 +1240,7 @@ const ProductOptionsEditor = () => {
                           />
                         </div>
                       )}
-                      {opt.circleOverlay.enabled && opt.circleOverlay.image && (
+                      {opt.circleOverlay.enabled && (
                         <div
                           style={{
                             position: 'absolute',
@@ -1217,16 +1250,28 @@ const ProductOptionsEditor = () => {
                             zIndex: opt.circleOverlay.zIndex === 'front' ? 2 : 1
                           }}
                         >
-                          <CanvasCircleOverlay
-                            src={opt.circleOverlay.image}
-                            size={opt.circleOverlay.size.width}
-                            posX={opt.circleOverlay.innerImage?.position?.x || 50}
-                            posY={opt.circleOverlay.innerImage?.position?.y || 50}
-                            userScale={opt.circleOverlay.innerImage?.scale || 100}
-                            bg={opt.circleOverlay.backgroundColor || '#FFFFFF'}
-                            borderColor="#ddd"
-                            borderWidth={3}
-                          />
+                          {opt.circleOverlay.image ? (
+                            <CanvasCircleOverlay
+                              src={opt.circleOverlay.image}
+                              size={opt.circleOverlay.size.width}
+                              posX={opt.circleOverlay.innerImage?.position?.x || 50}
+                              posY={opt.circleOverlay.innerImage?.position?.y || 50}
+                              userScale={opt.circleOverlay.innerImage?.scale || 100}
+                              bg={opt.circleOverlay.backgroundColor || '#FFFFFF'}
+                              borderColor="#ddd"
+                              borderWidth={3}
+                            />
+                          ) : (
+                            <div
+                              style={{
+                                width: `${opt.circleOverlay.size.width}px`,
+                                height: `${opt.circleOverlay.size.height}px`,
+                                borderRadius: '50%',
+                                backgroundColor: opt.circleOverlay.backgroundColor || '#FFFFFF',
+                                border: '3px solid #ddd'
+                              }}
+                            />
+                          )}
                         </div>
                       )}
                       {opt.textBox.enabled && opt.textBox.text && (
@@ -2329,7 +2374,7 @@ const ProductOptionsEditor = () => {
                               onMouseDown={(e) => startDrag(option.id, 'main', e)}
                             />
                           )}
-                          {option.circleOverlay.enabled && option.circleOverlay.image && (
+                          {option.circleOverlay.enabled && (
                             <div
                               style={{
                                 position: 'absolute',
@@ -2344,17 +2389,30 @@ const ProductOptionsEditor = () => {
                                 startDrag(option.id, 'circle', e);
                               }}
                             >
-                              <CanvasCircleOverlay
-                                src={option.circleOverlay.image}
-                                size={option.circleOverlay.size.width}
-                                posX={option.circleOverlay.innerImage?.position?.x || 50}
-                                posY={option.circleOverlay.innerImage?.position?.y || 50}
-                                userScale={option.circleOverlay.innerImage?.scale || 100}
-                                bg={option.circleOverlay.backgroundColor || '#FFFFFF'}
-                                borderColor="#ddd"
-                                borderWidth={3}
-                                style={{ pointerEvents: 'none' }}
-                              />
+                              {option.circleOverlay.image ? (
+                                <CanvasCircleOverlay
+                                  src={option.circleOverlay.image}
+                                  size={option.circleOverlay.size.width}
+                                  posX={option.circleOverlay.innerImage?.position?.x || 50}
+                                  posY={option.circleOverlay.innerImage?.position?.y || 50}
+                                  userScale={option.circleOverlay.innerImage?.scale || 100}
+                                  bg={option.circleOverlay.backgroundColor || '#FFFFFF'}
+                                  borderColor="#ddd"
+                                  borderWidth={3}
+                                  style={{ pointerEvents: 'none' }}
+                                />
+                              ) : (
+                                <div
+                                  style={{
+                                    width: `${option.circleOverlay.size.width}px`,
+                                    height: `${option.circleOverlay.size.height}px`,
+                                    borderRadius: '50%',
+                                    backgroundColor: option.circleOverlay.backgroundColor || '#FFFFFF',
+                                    border: '3px solid #ddd',
+                                    pointerEvents: 'none'
+                                  }}
+                                />
+                              )}
                             </div>
                           )}
                           {option.textBox.enabled && (
